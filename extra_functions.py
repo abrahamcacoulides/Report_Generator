@@ -37,13 +37,13 @@ def spentTime(pk,number):
             else:
                 time_on_shift_end += stop.stop_end_time - stop.stop_start_time
     if end>start:#means that the stop_time has been set
-        elapsed_time = str((end-start)-time_on_shift_end).split('.', 2)[0]
+        elapsed_time = (end-start)-time_on_shift_end
         return elapsed_time
     elif end == start and status != status_list[number]:#means that it has not being started
-        elapsed_time = '-'
+        elapsed_time = datetime.timedelta(0)
         return elapsed_time
     else:#job is being worked on
-        elapsed_time = str((now - start)-time_on_shift_end).split('.', 2)[0]
+        elapsed_time = (now - start)-time_on_shift_end
         return elapsed_time
 
 def stopsnumber(pk):
@@ -55,13 +55,42 @@ def stopsnumber(pk):
 
 def timeonstop(pk):
     now = timezone.now()
+    stops_shiftend = Stops.objects.filter(info_id=pk).filter(reason='Shift ended')
     stops = Stops.objects.filter(info_id=pk).exclude(reason='Shift ended')
     timeinstop = timezone.timedelta(0)
     for stop in stops:
-        if stop.stop_end_time>stop.stop_start_time:
-            timeinstop += stop.stop_end_time - stop.stop_start_time
+        if stops_shiftend:
+            real_time_on_stop = stop.stop_end_time - stop.stop_start_time
+            for stop_se in stops_shiftend:
+                if stop.stop_start_time < stop_se.stop_start_time and stop.stop_end_time > stop_se.stop_end_time:
+                    shift_end_stop_elapsed_time = stop_se.stop_end_time - stop_se.stop_start_time
+                    real_time_on_stop -= shift_end_stop_elapsed_time
+            timeinstop += real_time_on_stop
         else:
-            timeinstop += now - stop.stop_start_time
+            if stop.stop_end_time>stop.stop_start_time:
+                timeinstop += stop.stop_end_time - stop.stop_start_time
+            else:
+                timeinstop += now - stop.stop_start_time
+    return timeinstop
+
+def timeonstop_1(pk):
+    now = timezone.now()
+    stop_obj = Stops.objects.get(pk=pk)
+    job_obj = Info.objects.get(pk=stop_obj.info_id)
+    stops_shiftend = Stops.objects.filter(info_id=job_obj.pk).filter(reason='Shift ended')
+    timeinstop = timezone.timedelta(0)
+    if stops_shiftend:
+        real_time_on_stop = stop_obj.stop_end_time - stop_obj.stop_start_time
+        for stop_se in stops_shiftend:
+            if stop_obj.stop_start_time < stop_se.stop_start_time and stop_obj.stop_end_time > stop_se.stop_end_time:
+                shift_end_stop_elapsed_time = stop_se.stop_end_time - stop_se.stop_start_time
+                real_time_on_stop -= shift_end_stop_elapsed_time
+        timeinstop += real_time_on_stop
+    else:
+        if stop_obj.stop_end_time>stop_obj.stop_start_time:
+            timeinstop += stop_obj.stop_end_time - stop_obj.stop_start_time
+        else:
+            timeinstop += now - stop_obj.stop_start_time
     return timeinstop
 
 def totaltime(pk):
@@ -196,12 +225,12 @@ def categories(pk,*args, **kwargs):
 def gettimes(pk,B,*args, **kwargs):
     times = Times.objects.get(info_id=pk)
     if B == 'start':
-        return times.start_time_1.date()
+        return datetime.date.__format__(times.start_time_1,"%d/%m/%Y")
     elif B == 'end':
         if times.start_time_1 == times.end_time_4:
             return '-'
         else:
-            return times.end_time_4.date()
+            return datetime.date.__format__(times.end_time_4,"%d/%m/%Y")
     else:
         return 'N/A'
 
