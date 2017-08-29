@@ -62,7 +62,7 @@ def timeonstop(pk):
         if stops_shiftend:
             real_time_on_stop = stop.stop_end_time - stop.stop_start_time
             for stop_se in stops_shiftend:
-                if stop.stop_start_time < stop_se.stop_start_time and stop.stop_end_time > stop_se.stop_end_time:
+                if stop.stop_start_time < stop_se.stop_start_time and stop.stop_end_time >= stop_se.stop_end_time:
                     shift_end_stop_elapsed_time = stop_se.stop_end_time - stop_se.stop_start_time
                     real_time_on_stop -= shift_end_stop_elapsed_time
             timeinstop += real_time_on_stop
@@ -82,7 +82,7 @@ def timeonstop_1(pk):
     if stops_shiftend:
         real_time_on_stop = stop_obj.stop_end_time - stop_obj.stop_start_time
         for stop_se in stops_shiftend:
-            if stop_obj.stop_start_time < stop_se.stop_start_time and stop_obj.stop_end_time > stop_se.stop_end_time:
+            if stop_obj.stop_start_time < stop_se.stop_start_time and stop_obj.stop_end_time >= stop_se.stop_end_time:
                 shift_end_stop_elapsed_time = stop_se.stop_end_time - stop_se.stop_start_time
                 real_time_on_stop -= shift_end_stop_elapsed_time
         timeinstop += real_time_on_stop
@@ -225,12 +225,12 @@ def categories(pk,*args, **kwargs):
 def gettimes(pk,B,*args, **kwargs):
     times = Times.objects.get(info_id=pk)
     if B == 'start':
-        return datetime.date.__format__(times.start_time_1,"%d/%m/%Y")
+        return datetime.date.__format__(times.start_time_1,"%m/%d/%Y")
     elif B == 'end':
         if times.start_time_1 == times.end_time_4:
             return '-'
         else:
-            return datetime.date.__format__(times.end_time_4,"%d/%m/%Y")
+            return datetime.date.__format__(times.end_time_4,"%m/%d/%Y")
     else:
         return 'N/A'
 

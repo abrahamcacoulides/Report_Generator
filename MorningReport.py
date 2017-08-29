@@ -5,25 +5,35 @@ import datetime
 import openpyxl
 from openpyxl.styles import PatternFill, NamedStyle
 
-sys.path.append('C:\\Users\\abraham.cacoulides\\PycharmProjects\\testwebpage\\')
+#*****************************
+sys.path.append('C:\\Users\\abraham.cacoulides\\PycharmProjects\\testwebpage')#folder for the app
+#*****************************
 os.environ['DJANGO_SETTINGS_MODULE'] = 'testwebpage.settings'
 django.setup()
 
 from prodfloor.models import Info,Times,Stops
 from extra_functions import *
-grayFill = PatternFill(start_color='CBFCC4',end_color = 'CBFCC4',fill_type = 'solid')
-date_style = NamedStyle(name='datetime', number_format='DD/MM/YYYY')
 
-wb = openpyxl.load_workbook(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Morning_Report_Template.xlsx')
-minitab_wb = openpyxl.load_workbook(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Morning_Report_Template_minitab.xlsx')
-data_wb = openpyxl.load_workbook(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Data.xlsx')
-stop_wb = openpyxl.load_workbook(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Stops_Report_Template.xlsx')
+#Change this values if first setup
+#*****************************
+user = 'abraham.cacoulides'
+day = datetime.date(2017,8,24)
+folder_name = ''
+#*****************************
+
+grayFill = PatternFill(start_color='CBFCC4',end_color = 'CBFCC4',fill_type = 'solid')
+date_style = NamedStyle(name='date_time')
+date_style.number_format = 'mm/dd/yyyy'
+wb = openpyxl.load_workbook(r'C:\Users\\' + user + '\Desktop\Morning Reports\Morning_Report_Template.xlsx')
+minitab_wb = openpyxl.load_workbook(r'C:\Users\\' + user + '\Desktop\Morning Reports\Morning_Report_Template_minitab.xlsx')
+data_wb = openpyxl.load_workbook(r'C:\Users\\' + user + '\Desktop\Morning Reports\Data.xlsx')
+stop_wb = openpyxl.load_workbook(r'C:\Users\\' + user + '\Desktop\Morning Reports\Stops_Report_Template.xlsx')
 sheet = wb.get_sheet_by_name('Jobs_Completed')
 minitab_sheet = minitab_wb.get_sheet_by_name('Jobs_Completed')
+minitab_grouped_sheet = minitab_wb.get_sheet_by_name('Jobs_Completed_Grouped')
 stop_sheet = stop_wb.get_sheet_by_name('Report')
 data_sheet = data_wb.get_sheet_by_name('Data')
 job = Info.objects.all()
-day = datetime.date(2017,8,23)
 completed_before = datetime.datetime.combine(day, datetime.datetime.max.time())
 completed_after = datetime.datetime.combine(day, datetime.datetime.min.time())
 times = Times.objects.filter(end_time_4__gte=completed_after,end_time_4__lte=completed_before)
@@ -42,6 +52,7 @@ completed_jobs_m2000 = job.filter(job_type = '2000')
 completed_jobs_elem = job.filter(job_type = 'ELEM')
 c = 2
 mt_c = 2
+mtg_c = 2
 stations_dict = {'0': '-----',
                      '1': 'S1',
                      '2': 'S2',
@@ -88,10 +99,13 @@ for obj_main in job:
         sheet['C' + str(c)] = job_type_dict[obj.job_type]
         sheet['D' + str(c)] = obj.status
         sheet['E' + str(c)] = stations_dict[obj.station]
-        sheet['F' + str(c)] = str(start)
-        sheet['F' + str(c)].style = date_style
-        sheet['G' + str(c)] = str(end)
-        sheet['G' + str(c)].style = date_style
+        sheet['F' + str(c)] = datetime.datetime.strptime(start,"%m/%d/%Y").date()
+        sheet['F' + str(c)].style = 'DATE'
+        if end != '-' and end != 'N/A':
+            sheet['G' + str(c)] = datetime.datetime.strptime(end,"%m/%d/%Y").date()
+        else:
+            sheet['G' + str(c)] = '-'
+        sheet['G' + str(c)].style = 'DATE'
         sheet['H' + str(c)] = (beginning_time.total_seconds()) / 3600
         sheet['I' + str(c)] = (program_time.total_seconds()) / 3600
         sheet['J' + str(c)] = (logic_time.total_seconds()) / 3600
@@ -107,10 +121,13 @@ for obj_main in job:
         minitab_sheet['C' + str(mt_c)] = job_type_dict[obj.job_type]
         minitab_sheet['D' + str(mt_c)] = obj.status
         minitab_sheet['E' + str(mt_c)] = stations_dict[obj.station]
-        minitab_sheet['F' + str(mt_c)] = start
-        minitab_sheet['F' + str(c)].style = date_style
-        minitab_sheet['G' + str(mt_c)] = end
-        minitab_sheet['G' + str(c)].style = date_style
+        minitab_sheet['F' + str(mt_c)] = datetime.datetime.strptime(start,"%m/%d/%Y").date()
+        minitab_sheet['F' + str(mt_c)].style = 'DATE1'
+        if end != '-' and end != 'N/A':
+            minitab_sheet['G' + str(mt_c)] = datetime.datetime.strptime(end,"%m/%d/%Y").date()
+        else:
+            minitab_sheet['G' + str(mt_c)] = '-'
+        minitab_sheet['G' + str(mt_c)].style = 'DATE1'
         minitab_sheet['H' + str(mt_c)] = (beginning_time.total_seconds())/3600
         minitab_sheet['I' + str(mt_c)] = (program_time.total_seconds())/3600
         minitab_sheet['J' + str(mt_c)] = (logic_time.total_seconds())/3600
@@ -140,10 +157,29 @@ for obj_main in job:
     sheet['O' + str(c)] = (total_eff_time.total_seconds())/3600
     sheet['P' + str(c)] = categories(obj_main.pk)
     sheet['Q' + str(c)] = '-'
-    for rowOfCellObjects in sheet['A' + str(c):'Q' + str(c)]:
+    #To minitab grouped jobs sheet
+    minitab_grouped_sheet['A' + str(mtg_c)] = obj_main.job_num
+    minitab_grouped_sheet['B' + str(mtg_c)] = obj_main.po
+    minitab_grouped_sheet['C' + str(mtg_c)] = job_type_dict[obj_main.job_type]
+    minitab_grouped_sheet['D' + str(mtg_c)] = obj_main.status
+    minitab_grouped_sheet['E' + str(mtg_c)] = '-'
+    minitab_grouped_sheet['F' + str(mtg_c)] = '-'
+    minitab_grouped_sheet['G' + str(mtg_c)] = '-'
+    minitab_grouped_sheet['H' + str(mtg_c)] = '-'
+    minitab_grouped_sheet['I' + str(mtg_c)] = '-'
+    minitab_grouped_sheet['J' + str(mtg_c)] = '-'
+    minitab_grouped_sheet['K' + str(mtg_c)] = '-'
+    minitab_grouped_sheet['L' + str(mtg_c)] = (total_elapsed_time.total_seconds())/3600
+    minitab_grouped_sheet['M' + str(mtg_c)] = total_stops
+    minitab_grouped_sheet['N' + str(mtg_c)] = (total_time_on_stop.total_seconds())/3600
+    minitab_grouped_sheet['O' + str(mtg_c)] = (total_eff_time.total_seconds())/3600
+    minitab_grouped_sheet['P' + str(mtg_c)] = categories(obj_main.pk)
+    minitab_grouped_sheet['Q' + str(mtg_c)] = '-'
+    for rowOfCellObjects in sheet['A' + str(mtg_c):'Q' + str(mtg_c)]:
         for cellObj in rowOfCellObjects:
             cellObj.fill = grayFill
-    c+=1
+    c += 1
+    mtg_c += 1
 
 efficiency_2000 = efficiency(completed_jobs_m2000)
 efficiency_4000 = efficiency(completed_jobs_m4000)
@@ -175,7 +211,7 @@ for stop in stops:
         stop_sheet['M' + str(stop_c)] = tech
         stop_c += 1
 
-wb.save(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Morning_Report_'+ str(day) + '.xlsx')
-data_wb.save(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Data.xlsx')
-minitab_wb.save(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Morning_Report_'+ str(day) + '_mt.xlsx')
-stop_wb.save(r'C:\Users\abraham.cacoulides\Desktop\Morning Reports\Stop_Report_'+ str(day) + '.xlsx')
+wb.save(r'C:\Users\\' + user + '\Desktop\Morning Reports\Morning_Report_'+ str(day) + '.xlsx')
+data_wb.save(r'C:\Users\\' + user + '\Desktop\Morning Reports\Data.xlsx')
+minitab_wb.save(r'C:\Users\\' + user + '\Desktop\Morning Reports\Morning_Report_'+ str(day) + '_mt.xlsx')
+stop_wb.save(r'C:\Users\\' + user + '\Desktop\Morning Reports\Stop_Report_'+ str(day) + '.xlsx')
