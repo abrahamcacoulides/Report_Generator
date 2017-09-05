@@ -1,8 +1,11 @@
+import pytz
 from django.contrib.admin.models import LogEntry, CHANGE, ADDITION
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from prodfloor.models import Stops, Times, Features, Info
 import datetime,copy
+
+instance_time_zone = pytz.timezone('America/Monterrey')
 
 def spentTime(pk,number):
     now = timezone.now()
@@ -125,7 +128,9 @@ def totaltime(pk):
 def effectivetime(pk):#effective time spent on job
     now = timezone.now()
     stops_end_shift = Stops.objects.filter(info_id=pk, reason='Shift ended')
-    stops = Stops.objects.filter(info_id=pk).exclude(reason='Shift ended')
+    reassign_stops = Stops.objects.filter(info_id=pk, reason='Job reassignment')
+    stops = Stops.objects.filter(info_id=pk).exclude(reason__in=['Shift ended','Job reassignment'])
+    stops_1 = Stops.objects.filter(info_id=pk).exclude(reason__in=['Shift ended',])
     timeinstop = timezone.timedelta(0)
     end = 0
     start = 0
@@ -157,14 +162,30 @@ def effectivetime(pk):#effective time spent on job
             timeinstop += stop.stop_end_time - stop.stop_start_time
         else:
             timeinstop += now - stop.stop_start_time
-    for es_stop in stops_end_shift:
+    for re_stop in reassign_stops:
+        print('here')
         inside_another_stop = False
-        if es_stop.stop_end_time > es_stop.stop_start_time:
+        if re_stop.stop_end_time > re_stop.stop_start_time:
             for stop in stops:
-                if es_stop.stop_start_time > stop.stop_start_time and es_stop.stop_end_time < stop.stop_end_time:
+                if re_stop.stop_start_time >= stop.stop_start_time and re_stop.stop_end_time <= stop.stop_end_time:
                     inside_another_stop = True
         else:
             for stop in stops:
+                if not (stop.stop_end_time >= stop.stop_start_time):
+                    inside_another_stop = True
+        if not inside_another_stop:
+            if re_stop.stop_end_time > re_stop.stop_start_time:
+                timeinstop += re_stop.stop_end_time - re_stop.stop_start_time
+            else:
+                timeinstop += now - re_stop.stop_start_time
+    for es_stop in stops_end_shift:
+        inside_another_stop = False
+        if es_stop.stop_end_time > es_stop.stop_start_time:
+            for stop in stops_1:
+                if es_stop.stop_start_time > stop.stop_start_time and es_stop.stop_end_time <= stop.stop_end_time:
+                    inside_another_stop = True
+        else:
+            for stop in stops_1:
                 if not (stop.stop_end_time > stop.stop_start_time):
                     inside_another_stop = True
         if not inside_another_stop:
@@ -172,6 +193,10 @@ def effectivetime(pk):#effective time spent on job
                 timeinstop += es_stop.stop_end_time - es_stop.stop_start_time
             else:
                 timeinstop += now - es_stop.stop_start_time
+    job = Info.objects.get(pk=pk)
+    if job.status == 'Stopped':
+        if any(stop.solution == 'Not available yet' for stop in reassign_stops):
+            return datetime.timedelta(0)
     eff_time = elapsed_time - timeinstop
     return (eff_time)
 
@@ -225,12 +250,12 @@ def categories(pk,*args, **kwargs):
 def gettimes(pk,B,*args, **kwargs):
     times = Times.objects.get(info_id=pk)
     if B == 'start':
-        return datetime.date.__format__(times.start_time_1,"%m/%d/%Y")
+        return datetime.date.__format__(times.start_time_1.astimezone(instance_time_zone),"%m/%d/%Y")
     elif B == 'end':
         if times.start_time_1 == times.end_time_4:
             return '-'
         else:
-            return datetime.date.__format__(times.end_time_4,"%m/%d/%Y")
+            return datetime.date.__format__(times.end_time_4.astimezone(instance_time_zone),"%m/%d/%Y")
     else:
         return 'N/A'
 

@@ -4,9 +4,10 @@ import django
 import datetime
 import openpyxl
 from openpyxl.styles import PatternFill, NamedStyle
+from Variables import *
 
 #*****************************
-sys.path.append('C:\\Users\\abraham.cacoulides\\PycharmProjects\\testwebpage')#folder for the app
+sys.path.append(project_location)#folder for the app
 #*****************************
 os.environ['DJANGO_SETTINGS_MODULE'] = 'testwebpage.settings'
 django.setup()
@@ -16,9 +17,10 @@ from extra_functions import *
 
 #Change this values if first setup
 #*****************************
-user = 'abraham.cacoulides'
-day = datetime.date(2017,8,24)
-folder_name = ''
+u_input = input('Please insert the date(mm/dd/yyyy):')
+dates_list = u_input.split('/')
+user = user_var
+day = datetime.date(int(dates_list[2]),int(dates_list[0]),int(dates_list[1]))
 #*****************************
 
 grayFill = PatternFill(start_color='CBFCC4',end_color = 'CBFCC4',fill_type = 'solid')
@@ -47,9 +49,9 @@ for i in job:
     completed_pks.append(i.po)
 completed_jobs_number = len(completed_pks)
 completed_jobs = Info.objects.filter(po__in=completed_pks).order_by('po')#might not be needed
-completed_jobs_m4000 = job.filter(job_type = '4000')
-completed_jobs_m2000 = job.filter(job_type = '2000')
-completed_jobs_elem = job.filter(job_type = 'ELEM')
+completed_jobs_m4000 = job.filter(job_type='4000')
+completed_jobs_m2000 = job.filter(job_type='2000')
+completed_jobs_elem = job.filter(job_type='ELEM')
 c = 2
 mt_c = 2
 mtg_c = 2
@@ -175,7 +177,7 @@ for obj_main in job:
     minitab_grouped_sheet['O' + str(mtg_c)] = (total_eff_time.total_seconds())/3600
     minitab_grouped_sheet['P' + str(mtg_c)] = categories(obj_main.pk)
     minitab_grouped_sheet['Q' + str(mtg_c)] = '-'
-    for rowOfCellObjects in sheet['A' + str(mtg_c):'Q' + str(mtg_c)]:
+    for rowOfCellObjects in sheet['A' + str(c):'Q' + str(c)]:
         for cellObj in rowOfCellObjects:
             cellObj.fill = grayFill
     c += 1
@@ -184,13 +186,14 @@ for obj_main in job:
 efficiency_2000 = efficiency(completed_jobs_m2000)
 efficiency_4000 = efficiency(completed_jobs_m4000)
 efficiency_elem = efficiency(completed_jobs_elem)
-data_sheet['C3']= completed_jobs_m4000.count()
-data_sheet['C6']= completed_jobs_m2000.count()
-data_sheet['C9']= completed_jobs_elem.count()
-data_sheet['B3']= efficiency_4000
-data_sheet['B6']= efficiency_2000
-data_sheet['B9']= efficiency_elem
-
+data_sheet['C3'] = completed_jobs_m4000.count()
+data_sheet['C6'] = completed_jobs_m2000.count()
+data_sheet['C9'] = completed_jobs_elem.count()
+data_sheet['B3'] = efficiency_4000
+data_sheet['B6'] = efficiency_2000
+data_sheet['B9'] = efficiency_elem
+data_sheet['J1'] = day.strftime("%m/%d/%Y")
+data_sheet['J1'].style = 'Date'
 stop_c = 2
 for stop in stops:
     if stop.stop_end_time > stop.stop_start_time:
