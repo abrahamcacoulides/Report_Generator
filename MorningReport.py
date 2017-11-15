@@ -24,8 +24,6 @@ day = datetime.date(int(dates_list[2]),int(dates_list[0]),int(dates_list[1]))
 #*****************************
 
 grayFill = PatternFill(start_color='CBFCC4',end_color = 'CBFCC4',fill_type = 'solid')
-date_style = NamedStyle(name='date_time')
-date_style.number_format = 'mm/dd/yyyy'
 wb = openpyxl.load_workbook(r'C:\Users\\' + user + '\Desktop\Morning Reports\Morning_Report_Template.xlsx')
 minitab_wb = openpyxl.load_workbook(r'C:\Users\\' + user + '\Desktop\Morning Reports\Morning_Report_Template_minitab.xlsx')
 data_wb = openpyxl.load_workbook(r'C:\Users\\' + user + '\Desktop\Morning Reports\Data.xlsx')
@@ -202,8 +200,8 @@ for stop in stops:
         stop_sheet['A' + str(stop_c)] = job_obj.job_num
         stop_sheet['B' + str(stop_c)] = job_obj.po
         stop_sheet['C' + str(stop_c)] = job_type_dict[job_obj.job_type]
-        stop_sheet['D' + str(stop_c)] = stop.stop_start_time
-        stop_sheet['E' + str(stop_c)] = stop.stop_end_time
+        stop_sheet['D' + str(stop_c)] = datetime.datetime.__format__(stop.stop_start_time.astimezone(instance_time_zone),"%m/%d/%Y %H:%M:%S")
+        stop_sheet['E' + str(stop_c)] = datetime.date.__format__(stop.stop_end_time.astimezone(instance_time_zone),"%m/%d/%Y %H:%M:%S")
         stop_sheet['F' + str(stop_c)] = stop.reason
         stop_sheet['G' + str(stop_c)] = stop.extra_cause_1
         stop_sheet['H' + str(stop_c)] = stop.extra_cause_2

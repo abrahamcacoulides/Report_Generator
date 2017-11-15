@@ -163,7 +163,6 @@ def effectivetime(pk):#effective time spent on job
         else:
             timeinstop += now - stop.stop_start_time
     for re_stop in reassign_stops:
-        print('here')
         inside_another_stop = False
         if re_stop.stop_end_time > re_stop.stop_start_time:
             for stop in stops:
@@ -294,3 +293,112 @@ def efficiency(A):
         return '-'
     else:
         return(eff / count)
+
+def time_per_stage(pk,number):
+    now = timezone.now()
+    end = 0
+    start = 0
+    time_on_shift_end = timezone.timedelta(0)
+    times = Times.objects.get(info_id=pk)
+    job = Info.objects.get(pk=pk)
+    status = job.status
+    if status == 'Stoppped':
+        status = job.prev_stage
+    status_list = ['','Beginning','Program','Logic','Ending']
+    stops_shift_end = Stops.objects.filter(info_id=pk,reason='Shift ended')
+    stops_reassign = Stops.objects.filter(info_id=pk,reason='Job reassignment')
+    if number == 1:
+        start = times.start_time_1
+        end = times.end_time_1
+    elif number == 2:
+        start = times.start_time_2
+        end = times.end_time_2
+    elif number == 3:
+        start = times.start_time_3
+        end = times.end_time_3
+    elif number == 4:
+        start = times.start_time_4
+        end = times.end_time_4
+    else:
+        pass
+    for re_stop in stops_reassign:
+        if re_stop.stop_start_time > start and re_stop.stop_end_time<end:#el inicio del stop debe de ser mayor quue el inicio del stage y el
+            if re_stop.stop_start_time == re_stop.stop_end_time: #job is in shift end stop
+                time_on_shift_end += now - re_stop.stop_start_time
+            else:
+                time_on_shift_end += re_stop.stop_end_time - re_stop.stop_start_time
+    for stop in stops_shift_end:
+        if stop.stop_start_time > start and stop.stop_end_time<end:#el inicio del stop debe de ser mayor quue el inicio del stage y el
+            if any((restop.stop_start_time <= stop.stop_start_time and restop.stop_end_time <= stop.stop_end_time) for restop in stops_reassign):
+                if stop.stop_start_time == stop.stop_end_time: #job is in shift end stop
+                    time_on_shift_end += now - stop.stop_start_time
+                else:
+                    time_on_shift_end += stop.stop_end_time - stop.stop_start_time
+    if end>start:#means that the stop_time has been set
+        elapsed_time = (end-start)-time_on_shift_end
+        return elapsed_time
+    elif end == start and status != status_list[number]:#means that it has not being started
+        elapsed_time = datetime.timedelta(0)
+        return elapsed_time
+    else:#job is being worked on
+        elapsed_time = (now - start)-time_on_shift_end
+        return elapsed_time
+
+def effectivetime_stops(pk):#effective time spent on job
+    now = timezone.now()
+    stops_end_shift = Stops.objects.filter(info_id=pk, reason='Shift ended')
+    reassign_stops = Stops.objects.filter(info_id=pk, reason='Job reassignment')
+    stops = Stops.objects.filter(info_id=pk).exclude(reason__in=['Shift ended','Job reassignment'])
+    stops_1 = Stops.objects.filter(info_id=pk).exclude(reason__in=['Shift ended',])
+    timeinstop = timezone.timedelta(0)
+    end = 0
+    start = 0
+    times = Times.objects.get(info_id=pk)
+    elapsed_time = datetime.timedelta(0)
+    number = 1
+    while number < 5:
+        if number == 1:
+            start = times.start_time_1
+            end = times.end_time_1
+        elif number == 2:
+            start = times.start_time_2
+            end = times.end_time_2
+        elif number == 3:
+            start = times.start_time_3
+            end = times.end_time_3
+        elif number == 4:
+            start = times.start_time_4
+            end = times.end_time_4
+        if end > start:  # means that the stop_time has been set
+            elapsed_time += (end - start)
+        elif end == start:  # means that it has not being started and is not in beginning stage
+            elapsed_time += datetime.timedelta(0)
+        else:  # job is being worked on
+            elapsed_time += (now - start)
+        number += 1
+    for re_stop in reassign_stops:
+        if re_stop.stop_end_time > re_stop.stop_start_time:
+            timeinstop += re_stop.stop_end_time - re_stop.stop_start_time
+        else:
+            timeinstop += now - re_stop.stop_start_time
+    for es_stop in stops_end_shift:
+        inside_another_stop = False
+        if es_stop.stop_end_time > es_stop.stop_start_time:
+            for stop in stops_1:
+                if es_stop.stop_start_time > stop.stop_start_time and es_stop.stop_end_time <= stop.stop_end_time:
+                    inside_another_stop = True
+        else:
+            for stop in stops_1:
+                if not (stop.stop_end_time > stop.stop_start_time):
+                    inside_another_stop = True
+        if not inside_another_stop:
+            if es_stop.stop_end_time > es_stop.stop_start_time:
+                timeinstop += es_stop.stop_end_time - es_stop.stop_start_time
+            else:
+                timeinstop += now - es_stop.stop_start_time
+    job = Info.objects.get(pk=pk)
+    if job.status == 'Stopped':
+        if any(stop.solution == 'Not available yet' for stop in reassign_stops):
+            return datetime.timedelta(0)
+    eff_time = elapsed_time - timeinstop
+    return (eff_time)
